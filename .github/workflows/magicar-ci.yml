@@ -36,6 +36,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.5.0"
+      - name: Prepare offline Hey Magicar model
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet sentencepiece
+          bash scripts/prepare_magicar_kws.sh
       - name: Android build and tests
         run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest --stacktrace
       - name: Upload Magicar debug APK
