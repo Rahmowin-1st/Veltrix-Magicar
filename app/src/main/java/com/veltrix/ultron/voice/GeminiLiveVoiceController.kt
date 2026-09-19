@@ -23,6 +23,7 @@ import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.sqrt
 
 enum class GeminiLiveVoiceState {
     IDLE,
@@ -44,6 +45,8 @@ interface GeminiLiveVoiceListener {
     fun onOutputTranscript(text: String)
     fun onToolCall(call: GeminiLiveToolCall)
     fun onToolCancellation(ids: List<String>) {}
+    fun onInputLevel(level: Float) {}
+    fun onTurnComplete() {}
     fun onError(message: String)
 }
 
@@ -76,6 +79,7 @@ class GeminiLiveVoiceController(context: Context) {
         .build()
     private val active = AtomicBoolean(false)
     private val destroyed = AtomicBoolean(false)
+    private val missionActive = AtomicBoolean(false)
     private val transcriptLock = Any()
     private val idleStopRunnable = Runnable {
         if (active.get()) stop()
@@ -111,6 +115,13 @@ class GeminiLiveVoiceController(context: Context) {
         }
     }
 
+    fun setMissionActive(active: Boolean) {
+        missionActive.set(active)
+        if (active) disarmIdleStop() else if (this.active.get()) armIdleStop()
+    }
+
+    fun isActive(): Boolean = active.get()
+
     fun stop() {
         val wasActive = active.getAndSet(false)
         if (wasActive) {
@@ -127,6 +138,7 @@ class GeminiLiveVoiceController(context: Context) {
         currentToken = null
         resumeHandle = null
         reconnecting = false
+        missionActive.set(false)
         mainHandler.removeCallbacks(idleStopRunnable)
         stopRecorder()
         stopPlayer()
@@ -305,6 +317,7 @@ class GeminiLiveVoiceController(context: Context) {
                     outputTranscript.toString().trim().also { outputTranscript = StringBuilder() }
                 }
                 if (completed.isNotEmpty()) emitOutputTranscript(completed)
+                emitTurnComplete()
                 armIdleStop()
                 emitState(GeminiLiveVoiceState.LISTENING)
             }
@@ -405,6 +418,7 @@ class GeminiLiveVoiceController(context: Context) {
             while (active.get() && recorder === created) {
                 val count = runCatching { created.read(chunk, 0, chunk.size) }.getOrDefault(-1)
                 if (count <= 0) continue
+                emitInputLevel(rmsLevel(chunk, count))
                 val current = socket ?: continue
                 val encoded = Base64.encodeToString(chunk, 0, count, Base64.NO_WRAP)
                 val audio = JSONObject()
@@ -601,11 +615,32 @@ class GeminiLiveVoiceController(context: Context) {
 
     private fun armIdleStop() {
         mainHandler.removeCallbacks(idleStopRunnable)
-        mainHandler.postDelayed(idleStopRunnable, IDLE_SLEEP_MS)
+        if (!missionActive.get()) {
+            mainHandler.postDelayed(idleStopRunnable, IDLE_SLEEP_MS)
+        }
     }
 
     private fun disarmIdleStop() {
         mainHandler.removeCallbacks(idleStopRunnable)
+    }
+
+    private fun rmsLevel(bytes: ByteArray, count: Int): Float {
+        if (count < 2) return 0f
+        var sum = 0.0
+        var samples = 0
+        var i = 0
+        while (i + 1 < count) {
+            val lo = bytes[i].toInt() and 0xff
+            val hi = bytes[i + 1].toInt()
+            val sample = ((hi shl 8) or lo).toShort().toInt()
+            val normalized = sample / 32768.0
+            sum += normalized * normalized
+            samples++
+            i += 2
+        }
+        if (samples == 0) return 0f
+        val rms = sqrt(sum / samples)
+        return ((rms - 0.008) / 0.13).coerceIn(0.0, 1.0).toFloat()
     }
 
     private fun fail(message: String) {
@@ -629,6 +664,14 @@ class GeminiLiveVoiceController(context: Context) {
 
     private fun emitOutputTranscript(text: String) {
         mainHandler.post { listener.onOutputTranscript(text.take(4_000)) }
+    }
+
+    private fun emitInputLevel(level: Float) {
+        mainHandler.post { listener.onInputLevel(level.coerceIn(0f, 1f)) }
+    }
+
+    private fun emitTurnComplete() {
+        mainHandler.post { listener.onTurnComplete() }
     }
 
     private fun emitToolCall(call: GeminiLiveToolCall) {
