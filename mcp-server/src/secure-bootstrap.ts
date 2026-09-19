@@ -56,7 +56,7 @@ interface ChallengeStore {
 
 export class SecureDeviceBootstrap {
   constructor(
-    private readonly integrity: PlayIntegrityConfig,
+    private readonly integrity: PlayIntegrityConfig | undefined,
     private readonly signingSecret: string,
     private readonly ownerPrincipalId: string,
     private readonly store: ChallengeStore,
@@ -74,15 +74,20 @@ export class SecureDeviceBootstrap {
     const integrity = playIntegrityConfigFromEnv();
     const signingSecret = process.env.ULTRON_DEVICE_TOKEN_SIGNING_SECRET?.trim();
     const ownerPrincipalId = process.env.ULTRON_OWNER_PRINCIPAL_ID?.trim();
-    const anyEnrollmentCoreConfigured = Boolean(integrity || signingSecret || ownerPrincipalId);
+    const pairingCode = process.env.ULTRON_DEVICE_PAIRING_CODE?.trim();
+    const anyEnrollmentCoreConfigured = Boolean(integrity || signingSecret || ownerPrincipalId || pairingCode);
     if (!anyEnrollmentCoreConfigured) return undefined;
-    if (!integrity || !signingSecret || !ownerPrincipalId) {
+    if (!signingSecret || !ownerPrincipalId) {
       throw new Error(
-        'Secure device enrollment configuration is incomplete; Play Integrity, token signing secret, and owner principal are required together'
+        'Secure device enrollment configuration is incomplete; token signing secret and owner principal are required'
+      );
+    }
+    if (!integrity && !pairingCode) {
+      throw new Error(
+        'Secure device enrollment requires either complete Play Integrity configuration or a Magicar pairing code'
       );
     }
     const ttl = parseTokenTtl(process.env.ULTRON_DEVICE_TOKEN_TTL_SECONDS);
-    const pairingCode = process.env.ULTRON_DEVICE_PAIRING_CODE?.trim();
     const allowedBuildShas = secureEnrollmentBuildShaAllowlistFromEnv();
     if (process.env.NODE_ENV?.trim().toLowerCase() === 'production' && allowedBuildShas.size === 0) {
       throw new Error('Production secure enrollment requires an approved release/build SHA');
@@ -99,6 +104,7 @@ export class SecureDeviceBootstrap {
   }
 
   publicConfig(): { cloudProjectNumber: string; packageName: string } {
+    if (!this.integrity) throw new Error('play_integrity_not_configured');
     return {
       cloudProjectNumber: this.integrity.cloudProjectNumber,
       packageName: this.integrity.packageName
@@ -106,6 +112,7 @@ export class SecureDeviceBootstrap {
   }
 
   async createChallenge(input: DeviceEnrollmentChallengeInput): Promise<DeviceEnrollmentChallenge> {
+    if (!this.integrity) throw new Error('play_integrity_not_configured');
     const installationId = input.installationId.trim();
     const buildSha = input.buildSha.trim().toLowerCase();
     if (!INSTALLATION_ID_PATTERN.test(installationId)) throw new Error('invalid_installation_id');
@@ -128,6 +135,7 @@ export class SecureDeviceBootstrap {
   }
 
   async enroll(input: DeviceEnrollmentInput): Promise<DeviceEnrollmentResult> {
+    if (!this.integrity) throw new Error('play_integrity_not_configured');
     const nonce = input.nonce.trim();
     if (!NONCE_PATTERN.test(nonce)) throw new Error('invalid_enrollment_nonce');
     const stored = await this.store.consume(nonce);
@@ -199,12 +207,16 @@ export function secureDeviceBootstrapConfiguredFromEnv(): boolean {
   const integrity = playIntegrityConfigFromEnv();
   const signingSecret = process.env.ULTRON_DEVICE_TOKEN_SIGNING_SECRET?.trim();
   const ownerPrincipalId = process.env.ULTRON_OWNER_PRINCIPAL_ID?.trim();
-  const anyEnrollmentCoreConfigured = Boolean(integrity || signingSecret || ownerPrincipalId);
+  const pairingCode = process.env.ULTRON_DEVICE_PAIRING_CODE?.trim();
+  const anyEnrollmentCoreConfigured = Boolean(integrity || signingSecret || ownerPrincipalId || pairingCode);
   if (!anyEnrollmentCoreConfigured) return false;
-  if (!integrity || !signingSecret || !ownerPrincipalId) {
+  if (!signingSecret || !ownerPrincipalId) {
     throw new Error(
-      'Secure device enrollment configuration is incomplete; Play Integrity, token signing secret, and owner principal are required together'
+      'Secure device enrollment configuration is incomplete; token signing secret and owner principal are required'
     );
+  }
+  if (!integrity && !pairingCode) {
+    throw new Error('Secure device enrollment requires Play Integrity or a Magicar pairing code');
   }
   if (process.env.NODE_ENV?.trim().toLowerCase() !== 'production') return true;
   return secureEnrollmentBuildShaAllowlistFromEnv().size > 0;
