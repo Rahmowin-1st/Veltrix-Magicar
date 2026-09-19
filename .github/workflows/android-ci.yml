@@ -1,0 +1,96 @@
+name: Android CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Bootstrap Android SDK
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdk = if ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } elseif ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:USERPROFILE ".android\sdk" }
+          New-Item -ItemType Directory -Force -Path $sdk | Out-Null
+
+          $toolsPackage = "15859902"
+          $toolsSha256 = "90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a"
+          $sdkManager = Join-Path $sdk "cmdline-tools\latest\bin\sdkmanager.bat"
+          $toolsMarker = Join-Path $sdk "cmdline-tools\.veltrix-tools-$toolsPackage"
+
+          if (-not (Test-Path $sdkManager) -or -not (Test-Path $toolsMarker)) {
+            $zip = Join-Path $env:RUNNER_TEMP "android-commandline-tools-$toolsPackage.zip"
+            $extract = Join-Path $env:RUNNER_TEMP "android-commandline-tools-$toolsPackage-extracted"
+            Remove-Item $zip -Force -ErrorAction SilentlyContinue
+            Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+
+            & curl.exe -L --fail --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 30 --max-time 600 -o $zip "https://dl.google.com/android/repository/commandlinetools-win-${toolsPackage}_latest.zip"
+            if ($LASTEXITCODE -ne 0) { throw "Android command-line tools download failed with exit code $LASTEXITCODE" }
+            $actualSha256 = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualSha256 -ne $toolsSha256) { throw "Android command-line tools checksum mismatch: $actualSha256" }
+            Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+
+            $latest = Join-Path $sdk "cmdline-tools\latest"
+            Remove-Item $latest -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $latest | Out-Null
+            Copy-Item -Path (Join-Path $extract "cmdline-tools\*") -Destination $latest -Recurse -Force
+            New-Item -ItemType File -Force -Path $toolsMarker | Out-Null
+          }
+
+          $licenses = Join-Path $sdk "licenses"
+          New-Item -ItemType Directory -Force -Path $licenses | Out-Null
+          @(
+            "24333f8a63b6825ea9c5514f83c2829b004d1fee",
+            "d56f5187479451eabf01fb78af6dfcb131a6481e"
+          ) | Set-Content (Join-Path $licenses "android-sdk-license")
+
+          "ANDROID_SDK_ROOT=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ANDROID_HOME=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append
+          (Join-Path $sdk "platform-tools") | Out-File -FilePath $env:GITHUB_PATH -Append
+          (Join-Path $sdk "cmdline-tools\latest\bin") | Out-File -FilePath $env:GITHUB_PATH -Append
+
+          & $sdkManager --sdk_root=$sdk --channel=3 "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          $sdkInstallExit = $LASTEXITCODE
+          if ($sdkInstallExit -ne 0) {
+            Write-Host "Relevant available SDK packages:"
+            & $sdkManager --sdk_root=$sdk --channel=3 --list | Select-String -Pattern "platforms;android-36|build-tools;36"
+            throw "sdkmanager failed with exit code $sdkInstallExit"
+          }
+
+      - name: Gradle 9.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.0"
+
+      - name: Build and test
+        shell: powershell
+        run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest --stacktrace
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-magicar-debug-main
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
