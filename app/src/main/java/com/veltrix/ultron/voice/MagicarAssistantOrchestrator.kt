@@ -180,6 +180,7 @@ class MagicarAssistantOrchestrator(
                         message = "Explicit user confirmation is required before this sensitive or irreversible action.",
                         evidence = outcome.evidence
                     )
+                    activeToolCall = null
                     return
                 }
 
@@ -269,11 +270,10 @@ class MagicarAssistantOrchestrator(
 
         pendingSensitive = null
         missionRunning.set(true)
-        activeToolCall = pending.originalCall
+        activeToolCall = call
         live.setMissionActive(true)
         UltronCommandRuntime.approve(missionId, CommandApproval.ALLOW_ONCE) { outcome ->
-            live.sendToolResult(call, "CONFIRMED", "User confirmation accepted.")
-            handleTaskOutcome(pending.originalCall, outcome, approvals = 0)
+            handleTaskOutcome(call, outcome, approvals = 0)
         }
     }
 
@@ -293,8 +293,7 @@ class MagicarAssistantOrchestrator(
             return
         }
         UltronCommandRuntime.cancel(missionId) { outcome ->
-            live.sendToolResult(call, "CANCELLED", "Pending action declined.")
-            terminal(pending.originalCall, outcome)
+            terminal(call, outcome.copy(message = "Pending sensitive action declined."))
         }
     }
 
