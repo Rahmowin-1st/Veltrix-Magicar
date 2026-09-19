@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: veltrix-ultron-mcp
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: mcp-server
+    buildCommand: npm ci --no-audit --no-fund && npm run build
+    startCommand: ULTRON_MCP_ALLOWED_HOSTS="$RENDER_EXTERNAL_HOSTNAME" npm start
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+      - key: ULTRON_BACKEND
+        value: bridge
+      - key: ULTRON_BRIDGE_STORE
+        value: postgres
+      - key: ULTRON_MCP_HOST
+        value: 0.0.0.0
+      - key: ULTRON_ANDROID_PACKAGE_NAME
+        value: com.veltrix.ultron
+      - key: ULTRON_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+        value: "372895920933"
+      - key: ULTRON_ANDROID_ALLOWED_CERT_SHA256
+        value: s4g-SsZZTeGtikBezaxRivYI2JI8RlfP03VdPWwpNIc
+      - key: ULTRON_DEVICE_TOKEN_TTL_SECONDS
+        value: "2592000"
+      - key: ULTRON_AI_GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: ULTRON_AI_GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: DATABASE_URL
+        sync: false
+      - key: ULTRON_MCP_TOKENS_JSON
+        sync: false
+      - key: ULTRON_DEVICE_TOKENS_JSON
+        sync: false
+      - key: ULTRON_DEVICE_TOKEN_SIGNING_SECRET
+        sync: false
+      - key: ULTRON_OWNER_PRINCIPAL_ID
+        sync: false
+      - key: ULTRON_PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: ULTRON_ANDROID_ALLOWED_BUILD_SHAS
+        sync: false
+      - key: ULTRON_AI_GEMINI_LIVE_API_KEY
+        sync: false
+      - key: ULTRON_AI_GEMINI_BRAIN_API_KEY
+        sync: false
+      - key: ULTRON_AI_GROQ_API_KEY
+        sync: false
