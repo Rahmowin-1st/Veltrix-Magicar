@@ -34,6 +34,11 @@ class MagicarActiveSurfaceService : Service() {
     private var windowManager: WindowManager? = null
     private var surface: ActiveSurfaceView? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        activeInstance = this
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,6 +58,7 @@ class MagicarActiveSurfaceService : Service() {
 
     override fun onDestroy() {
         hideSurface()
+        if (activeInstance === this) activeInstance = null
         super.onDestroy()
     }
 
@@ -81,6 +87,10 @@ class MagicarActiveSurfaceService : Service() {
                 surface = view
                 view.start()
             }
+    }
+
+    private fun updateVoiceLevel(level: Float) {
+        surface?.setVoiceLevel(level.coerceIn(0f, 1f))
     }
 
     private fun hideSurface() {
@@ -208,6 +218,8 @@ class MagicarActiveSurfaceService : Service() {
     }
 
     companion object {
+        @Volatile private var activeInstance: MagicarActiveSurfaceService? = null
+
         const val ACTION_ACTIVE = "com.veltrix.magicar.surface.ACTIVE"
         const val ACTION_LEVEL = "com.veltrix.magicar.surface.LEVEL"
         const val ACTION_IDLE = "com.veltrix.magicar.surface.IDLE"
@@ -220,11 +232,9 @@ class MagicarActiveSurfaceService : Service() {
         }
 
         fun updateLevel(context: Context, level: Float) {
-            context.startService(
-                Intent(context, MagicarActiveSurfaceService::class.java)
-                    .setAction(ACTION_LEVEL)
-                    .putExtra(EXTRA_LEVEL, level.coerceIn(0f, 1f))
-            )
+            // Hot path: microphone level updates arrive ~10 times/second. Never
+            // churn Android services/Intents here; update the in-process surface.
+            activeInstance?.updateVoiceLevel(level)
         }
 
         fun deactivate(context: Context) {
