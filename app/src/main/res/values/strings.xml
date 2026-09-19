@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Veltrix Magicar</string>
+    <string name="accessibility_service_label">Veltrix Magicar Executor</string>
+    <string name="accessibility_description">Allows Veltrix Magicar to inspect and operate Android UI for approved missions.</string>
+    <string name="notification_listener_label">Veltrix Magicar Notification Context</string>
+    <string name="quick_settings_tile_label">Veltrix</string>
+    <string name="quick_settings_tile_subtitle">Open Chat</string>
+    <string name="quick_settings_tile_description">Open Veltrix Magicar Chat</string>
+    <string name="edge_handle_description">Veltrix Magicar edge handle. Swipe right or tap to open Chat. Hold to request one-time screen vision.</string>
+    <string name="screen_capture_notification_title">Veltrix screen vision</string>
+    <string name="screen_capture_notification_text">Capturing one user-approved frame</string>
+</resources>
