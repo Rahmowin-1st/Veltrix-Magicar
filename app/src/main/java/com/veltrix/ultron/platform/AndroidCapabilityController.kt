@@ -122,12 +122,9 @@ class AndroidCapabilityController(private val context: Context) {
     )
 
     fun showOverlay(): Boolean {
-        if (!Settings.canDrawOverlays(context)) return false
-        context.startService(
-            Intent(context, UltronOverlayService::class.java)
-                .setAction(UltronOverlayService.ACTION_SHOW)
-        )
-        return true
+        // Magicar intentionally has no persistent edge handle. Overlay permission is
+        // used only for the transient active glow/wave surface during a user session.
+        return Settings.canDrawOverlays(context)
     }
 
     fun hideOverlay() {
