@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableIntStateOf
+import com.veltrix.ultron.car.CarRuntimeService
 import com.veltrix.ultron.car.CarSessionRuntime
 import com.veltrix.ultron.car.CarWakeSource
 import com.veltrix.ultron.remote.UltronAgentRuntime
@@ -35,6 +36,13 @@ class MainActivity : ComponentActivity() {
                 voiceInvocationToken = voiceInvocationToken.intValue
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Permission/settings changes happen outside the app. Re-entering here
+        // re-arms the local wake detector without opening any assistant UI.
+        CarRuntimeService.start(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
