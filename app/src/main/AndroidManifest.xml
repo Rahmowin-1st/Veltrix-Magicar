@@ -65,6 +65,10 @@
             android:exported="false" />
 
         <service
+            android:name=".service.MagicarActiveSurfaceService"
+            android:exported="false" />
+
+        <service
             android:name=".service.UltronScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
