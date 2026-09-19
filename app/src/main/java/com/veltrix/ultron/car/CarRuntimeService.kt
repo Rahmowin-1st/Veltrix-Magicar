@@ -15,33 +15,49 @@ import com.veltrix.ultron.MainActivity
 import com.veltrix.ultron.R
 import com.veltrix.ultron.runtime.UltronCommandRuntime
 import com.veltrix.ultron.voice.MagicarAssistantOrchestrator
+import com.veltrix.ultron.voice.OfflineWakeWordEngine
 
 class CarRuntimeService : Service() {
     private lateinit var assistant: MagicarAssistantOrchestrator
+    private lateinit var wakeWord: OfflineWakeWordEngine
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
         startForeground(NOTIFICATION_ID, notification())
         UltronCommandRuntime.initialize(applicationContext)
-        assistant = MagicarAssistantOrchestrator(applicationContext)
+        assistant = MagicarAssistantOrchestrator(applicationContext) {
+            if (::wakeWord.isInitialized) wakeWord.resume()
+        }
+        wakeWord = OfflineWakeWordEngine(applicationContext) {
+            if (::wakeWord.isInitialized) wakeWord.pause()
+            assistant.wake(CarWakeSource.WAKE_WORD)
+        }
+        wakeWord.start()
         CarSessionRuntime.noteSystemAwake()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         CarSessionRuntime.noteSystemAwake()
         when (intent?.action) {
-            ACTION_WAKE -> assistant.wake(
-                intent.getStringExtra(EXTRA_WAKE_SOURCE)
-                    ?.let { runCatching { CarWakeSource.valueOf(it) }.getOrNull() }
-                    ?: CarWakeSource.ASSISTANT_INVOCATION
-            )
+            ACTION_WAKE -> {
+                if (::wakeWord.isInitialized) wakeWord.pause()
+                assistant.wake(
+                    intent.getStringExtra(EXTRA_WAKE_SOURCE)
+                        ?.let { runCatching { CarWakeSource.valueOf(it) }.getOrNull() }
+                        ?: CarWakeSource.ASSISTANT_INVOCATION
+                )
+            }
             ACTION_STOP_ASSISTANT -> assistant.stop()
+            else -> if (!CarSessionRuntime.snapshot().active && ::wakeWord.isInitialized) {
+                wakeWord.start()
+            }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
+        if (::wakeWord.isInitialized) wakeWord.destroy()
         if (::assistant.isInitialized) assistant.destroy()
         super.onDestroy()
     }
