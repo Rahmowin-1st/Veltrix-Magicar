@@ -1,4 +1,4 @@
-# Veltrix ULTRON MCP — Production Deploy
+# Veltrix Magicar Backend — Production Deploy
 
 This service is designed to run independently of the user's laptop. The canonical cloud path is:
 
@@ -34,7 +34,7 @@ Use cryptographically random bearer tokens generated outside source control. The
     "principalKind": "owner",
     "displayName": "Owner",
     "deviceOwnerPrincipalId": "owner",
-    "allowedDeviceIds": ["phone-main"],
+    "allowedDeviceIds": ["magicar-display"],
     "scopes": ["mcp", "ultron:tasks", "ultron:devices", "ultron:control-request"],
     "expiresAt": 1893456000
   }
@@ -46,10 +46,10 @@ Use cryptographically random bearer tokens generated outside source control. The
 ```json
 {
   "<RANDOM_DEVICE_BEARER_TOKEN>": {
-    "deviceId": "phone-main",
+    "deviceId": "magicar-display",
     "ownerPrincipalId": "owner",
     "kind": "PHONE",
-    "displayName": "Main Android",
+    "displayName": "Magicar Display",
     "allowedCapabilities": ["OPEN_APP", "UI_CLICK", "UI_TYPE", "UI_SCROLL"],
     "controlProfile": "ASK_EACH_ACTION",
     "expiresAt": 1893456000
@@ -74,7 +74,7 @@ Render free services can spin down during inactivity. This is safe for task dura
 ## Android pairing
 
 1. Deploy the service and obtain its HTTPS base URL.
-2. In ULTRON -> Control -> Remote Agent Link, enter the HTTPS base URL and the device bearer token that corresponds to this phone.
+2. In Veltrix Magicar -> Control -> Backend Link, enter the HTTPS base URL and the device bearer token that corresponds to this phone.
 3. ULTRON stores the token through Android Keystore-backed storage and does not display it again.
 4. Select Veltrix as the Android assistant and grant only the OS capabilities you actually want it to use.
 5. Remote missions then arrive through the battery-conscious long-poll bridge and still pass through normal permission/policy/verification gates.
