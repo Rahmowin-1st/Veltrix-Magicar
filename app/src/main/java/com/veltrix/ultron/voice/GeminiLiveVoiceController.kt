@@ -536,6 +536,19 @@ class GeminiLiveVoiceController(context: Context) {
             .put("description", "Resume a user-requested task that is currently paused.")
             .put("behavior", "NON_BLOCKING")
 
+        val confirmPending = JSONObject()
+            .put("name", "confirm_pending_action")
+            .put(
+                "description",
+                "Confirm a pending sensitive or irreversible action only after the user explicitly says yes/confirm."
+            )
+            .put("behavior", "NON_BLOCKING")
+
+        val denyPending = JSONObject()
+            .put("name", "deny_pending_action")
+            .put("description", "Decline the pending sensitive or irreversible action when the user says no/cancel.")
+            .put("behavior", "NON_BLOCKING")
+
         val tools = JSONArray().put(
             JSONObject().put(
                 "functionDeclarations",
@@ -544,6 +557,8 @@ class GeminiLiveVoiceController(context: Context) {
                     .put(cancelTask)
                     .put(pauseTask)
                     .put(resumeTask)
+                    .put(confirmPending)
+                    .put(denyPending)
             )
         )
 
@@ -565,8 +580,12 @@ class GeminiLiveVoiceController(context: Context) {
                                 "Stay idle unless the user speaks or explicitly invokes you. Never initiate device actions yourself. " +
                                 "For any device, app, Chrome, YouTube, web, setting, tap, scroll, typing, navigation, or UI action, " +
                                 "call execute_user_task with exactly what the user requested. Do not claim success before the tool result. " +
-                                "If the user asks only a general question, answer conversationally without a device-action tool. " +
-                                "Be concise. The user may interrupt you at any time; immediately yield to the interruption."
+                                "Normal reversible UI work is autonomous. If a tool result says explicit confirmation is required for a " +
+                                "purchase, destructive reset/delete, account/security change, credential step, uninstall, or similarly " +
+                                "irreversible action, ask the user briefly and wait. Call confirm_pending_action only after an explicit yes; " +
+                                "call deny_pending_action after an explicit no/cancel. If the user asks only a general question, answer " +
+                                "conversationally without a device-action tool. Be concise. The user may interrupt you at any time; " +
+                                "immediately yield to the interruption."
                         )
                     )
                 )
