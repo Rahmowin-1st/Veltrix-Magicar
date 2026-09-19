@@ -116,6 +116,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("com.google.android.play:integrity:1.6.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Offline wake-word runtime. Model assets are provisioned by scripts/prepare_magicar_kws.sh.
+    implementation("com.bihe0832.android:lib-sherpa-onnx:8.6.10")
 
     testImplementation("junit:junit:4.13.2")
 }
