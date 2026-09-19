@@ -3,7 +3,7 @@ package com.veltrix.ultron.car
 import java.util.UUID
 
 enum class CarSessionState { IDLE, LISTENING, EXECUTING, VERIFYING }
-enum class CarWakeSource { ASSISTANT_INVOCATION, DIRECT_COMMAND, USER_APPROVAL, OVERLAY_TAP }
+enum class CarWakeSource { WAKE_WORD, ASSISTANT_INVOCATION, DIRECT_COMMAND, USER_APPROVAL, OVERLAY_TAP }
 
 data class CarSessionSnapshot(
     val id: String?,
