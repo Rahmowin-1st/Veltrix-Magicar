@@ -1,0 +1,34 @@
+{
+  "name": "@veltrix/magicar-mcp-server",
+  "version": "0.3.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node dist/selftest.js && node dist/mcp-2026-selftest.js && node dist/mcp-security-boundary-selftest.js && node dist/production-entry-selftest.js && node dist/bridge-selftest.js && node dist/submission-rate-limit-selftest.js && node dist/safe-errors-selftest.js && node dist/secure-bootstrap-selftest.js && node dist/play-integrity-nonce-selftest.js && node dist/ai-planner-selftest.js && node dist/ai-readiness-selftest.js && node dist/ai-brain-router-selftest.js && node dist/ai-brain-runtime-selftest.js && node dist/main-assistant-orchestrator-selftest.js && node dist/gemini-live-token-selftest.js && node ../scripts/physical-acceptance-selftest.mjs",
+    "test:postgres": "npm run build && node dist/postgres-bridge-selftest.js && node dist/postgres-owner-authority-selftest.js && node dist/production-http-selftest.js",
+    "start": "node dist/production-entry.js",
+    "start:stdio": "node dist/stdio.js",
+    "dev": "tsx src/http.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/express": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "express": "^5.2.1",
+    "pg": "^8.16.3",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.16.5",
+    "typescript": "^5.9.3"
+  }
+}
