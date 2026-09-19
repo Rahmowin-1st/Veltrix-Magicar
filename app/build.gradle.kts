@@ -14,7 +14,7 @@ val veltrixBackendUrl = providers.environmentVariable("VELTRIX_BACKEND_URL")
     ?.trim()
     ?.trimEnd('/')
     ?.takeIf { it.isNotEmpty() }
-    ?: "https://veltrix-ultron-mcp.onrender.com"
+    ?: "https://veltrix-magicar-api.onrender.com"
 require(veltrixBackendUrl.startsWith("https://")) { "VELTRIX_BACKEND_URL must use HTTPS" }
 require(!veltrixBackendUrl.contains('"')) { "VELTRIX_BACKEND_URL contains an invalid quote" }
 
@@ -54,7 +54,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0-v0"
+        versionName = "1.0.0-rc1"
         buildConfigField("String", "VELTRIX_BUILD_SHA", "\"$veltrixBuildSha\"")
         buildConfigField("String", "VELTRIX_BACKEND_URL", "\"$veltrixBackendUrl\"")
 
