@@ -475,7 +475,7 @@ class AndroidAiCommandRuntime(context: Context) {
         planner: AiPlanner,
         originalContext: PlannerContext,
         initial: PlannerExecutionResult,
-        maxRounds: Int = 3
+        maxRounds: Int = 5
     ): PlannerExecutionResult {
         var result = initial
         var rounds = 0
