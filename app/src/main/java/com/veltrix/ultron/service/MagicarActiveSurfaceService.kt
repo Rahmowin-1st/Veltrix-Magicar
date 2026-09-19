@@ -9,16 +9,13 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Shader
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.animation.ValueAnimator
-import androidx.core.content.ContextCompat
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
@@ -217,8 +214,7 @@ class MagicarActiveSurfaceService : Service() {
         const val EXTRA_LEVEL = "voice_level"
 
         fun activate(context: Context) {
-            ContextCompat.startForegroundService(
-                context,
+            context.startService(
                 Intent(context, MagicarActiveSurfaceService::class.java).setAction(ACTION_ACTIVE)
             )
         }
