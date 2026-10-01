@@ -53,8 +53,8 @@ android {
         applicationId = "com.veltrix.magicar"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0-rc2"
+        versionCode = 3
+        versionName = "1.0.0-rc3"
         buildConfigField("String", "VELTRIX_BUILD_SHA", "\"$veltrixBuildSha\"")
         buildConfigField("String", "VELTRIX_BACKEND_URL", "\"$veltrixBackendUrl\"")
 
