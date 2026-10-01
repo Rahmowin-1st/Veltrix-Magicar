@@ -236,12 +236,42 @@ class UltronAccessibilityService : AccessibilityService(), AndroidExecutorEndpoi
 
     private fun scroll(action: AccessibilityAction, forward: Boolean): AccessibilityActionResult {
         val root = rootInActiveWindow ?: return action.fail("No active accessibility window")
-        val scrollable = root.findFirstScrollable()
-            ?: return action.fail("No visible enabled scrollable node found")
+        val query = action.text?.trim().orEmpty()
+        val candidates = root.collectScrollableNodes(limit = 80)
+        if (candidates.isEmpty()) return action.fail("No visible enabled scrollable node found")
+
+        val scrollable = if (query.isBlank()) {
+            candidates.firstOrNull { it.isFocused || it.isAccessibilityFocused }
+                ?: candidates.maxByOrNull { node ->
+                    val bounds = Rect().also(node::getBoundsInScreen)
+                    (bounds.width().coerceAtLeast(0) * bounds.height().coerceAtLeast(0))
+                }
+        } else {
+            val ranked = candidates
+                .map { node ->
+                    node to SemanticTargetMatcher.score(
+                        query = query,
+                        values = node.semanticValues(),
+                        focused = node.isFocused || node.isAccessibilityFocused
+                    )
+                }
+                .filter { (_, score) -> score > 0 }
+                .sortedByDescending { (_, score) -> score }
+            if (ranked.isEmpty()) return action.fail("No scrollable container matched semantic target")
+            val topScore = ranked.first().second
+            val top = ranked.filter { it.second == topScore }
+            if (top.size != 1) return action.fail("Scrollable target is ambiguous; more screen context is required")
+            top.single().first
+        } ?: return action.fail("No actionable scroll container found")
+
         val actionId = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
         val accepted = scrollable.performAction(actionId)
-        return if (accepted) action.ok(if (forward) "Scroll forward accepted" else "Scroll backward accepted")
-        else action.fail("Android rejected scroll action")
+        return if (accepted) {
+            action.ok(
+                if (forward) "Scroll forward accepted" else "Scroll backward accepted",
+                if (query.isBlank()) emptyMap() else mapOf("target" to query)
+            )
+        } else action.fail("Android rejected scroll action")
     }
 
     private fun globalAction(
@@ -329,6 +359,20 @@ class UltronAccessibilityService : AccessibilityService(), AndroidExecutorEndpoi
             }
         }
         return null
+    }
+
+    private fun AccessibilityNodeInfo.collectScrollableNodes(limit: Int): List<AccessibilityNodeInfo> {
+        val output = ArrayList<AccessibilityNodeInfo>(minOf(limit, 12))
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(this)
+        while (queue.isNotEmpty() && output.size < limit) {
+            val node = queue.removeFirst()
+            if (node.isVisibleToUser && node.isEnabled && node.isScrollable) output += node
+            for (index in 0 until node.childCount) {
+                node.getChild(index)?.let(queue::addLast)
+            }
+        }
+        return output
     }
 
     private fun AccessibilityNodeInfo.collectEditableNodes(limit: Int): List<AccessibilityNodeInfo> {
