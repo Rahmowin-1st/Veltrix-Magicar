@@ -65,22 +65,20 @@ jobs:
         run: |
           set -euo pipefail
           SRC="$GITHUB_WORKSPACE/app/build/outputs/apk/debug/app-debug.apk"
+          ASSET="$RUNNER_TEMP/Veltrix-Magicar-RC3-debug.apk"
+          TAG="magicar-rc3"
           test -s "$SRC"
+          cp "$SRC" "$ASSET"
 
-          STAGE="$RUNNER_TEMP/magicar-download"
-          rm -rf "$STAGE"
-          mkdir -p "$STAGE"
-          cp "$SRC" "$STAGE/Veltrix-Magicar-RC3-debug.apk"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$ASSET" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Veltrix Magicar RC3" \
+              --notes "Public install build for Veltrix Magicar RC3. Built and tested by the main CI workflow."
+          fi
 
-          cd "$STAGE"
-          git init
-          git checkout -b downloads
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Veltrix-Magicar-RC3-debug.apk
-          git commit -m "Publish Veltrix Magicar RC3 APK"
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin downloads
 
   backend:
     runs-on: ubuntu-latest
