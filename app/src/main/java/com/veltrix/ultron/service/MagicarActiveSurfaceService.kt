@@ -152,9 +152,34 @@ class MagicarActiveSurfaceService : Service() {
             val inset = edgeWidth * 0.6f
 
             edgePaint.strokeWidth = edgeWidth
-            edgePaint.color = Color.argb(edgeAlpha, 30, 190, 255)
+            edgePaint.shader = LinearGradient(
+                0f,
+                0f,
+                w,
+                h,
+                intArrayOf(
+                    Color.argb(edgeAlpha, 38, 132, 255),
+                    Color.argb(edgeAlpha, 30, 215, 255),
+                    Color.argb(edgeAlpha, 85, 236, 255),
+                    Color.argb(edgeAlpha, 32, 125, 255)
+                ),
+                floatArrayOf(0f, 0.34f, 0.66f, 1f),
+                Shader.TileMode.CLAMP
+            )
             haloPaint.strokeWidth = 9f * density
-            haloPaint.color = Color.argb(haloAlpha, 20, 145, 255)
+            haloPaint.shader = LinearGradient(
+                0f,
+                h,
+                w,
+                0f,
+                intArrayOf(
+                    Color.argb(haloAlpha, 20, 105, 255),
+                    Color.argb(haloAlpha, 24, 205, 255),
+                    Color.argb(haloAlpha, 76, 226, 255)
+                ),
+                null,
+                Shader.TileMode.CLAMP
+            )
 
             canvas.drawRoundRect(
                 inset,
@@ -174,6 +199,8 @@ class MagicarActiveSurfaceService : Service() {
                 7f * density,
                 edgePaint
             )
+            edgePaint.shader = null
+            haloPaint.shader = null
 
             drawTopWave(canvas, w)
         }
