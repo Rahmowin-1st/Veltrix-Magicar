@@ -2,9 +2,11 @@ package com.veltrix.ultron.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -45,16 +48,22 @@ import com.veltrix.ultron.runtime.CommandOutcome
 import com.veltrix.ultron.runtime.CommandOutcomeState
 import com.veltrix.ultron.runtime.UltronCommandRuntime
 
-private val UltronCyan = Color(0xFF19C8FF)
-private val UltronDeep = Color(0xFF0B1016)
-private val UltronPanel = Color(0xCC121A22)
+private val UltronCyan = Color(0xFF4DDCFF)
+private val UltronBlue = Color(0xFF4F7DFF)
+private val UltronDeep = Color(0xFF060B11)
+private val UltronPanel = Color(0xE6101821)
+private val UltronPanelStrong = Color(0xF20C151E)
+private val UltronMuted = Color(0xFF8FA8B8)
 
 @Composable
 fun UltronApp(initialPage: Int = 0, voiceInvocationToken: Int = 0) {
     val scheme = darkColorScheme(
         primary = UltronCyan,
+        secondary = UltronBlue,
         background = UltronDeep,
-        surface = Color(0xFF101820)
+        surface = UltronPanelStrong,
+        onBackground = Color(0xFFF4F8FB),
+        onSurface = Color(0xFFF4F8FB)
     )
     var selected by remember(initialPage) { mutableIntStateOf(initialPage.coerceIn(0, 3)) }
     val pages = listOf("Home", "Chat", "Missions", "Control")
@@ -67,7 +76,10 @@ fun UltronApp(initialPage: Int = 0, voiceInvocationToken: Int = 0) {
         Scaffold(
             containerColor = Color.Transparent,
             bottomBar = {
-                NavigationBar(containerColor = Color(0xF010171E)) {
+                NavigationBar(
+                    containerColor = Color(0xF2080E14),
+                    tonalElevation = 0.dp
+                ) {
                     pages.forEachIndexed { index, label ->
                         NavigationBarItem(
                             selected = selected == index,
@@ -84,7 +96,7 @@ fun UltronApp(initialPage: Int = 0, voiceInvocationToken: Int = 0) {
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFF07131B), UltronDeep, Color(0xFF05080C))
+                            listOf(Color(0xFF07131C), UltronDeep, Color(0xFF030609))
                         )
                     )
                     .padding(padding)
@@ -102,15 +114,172 @@ fun UltronApp(initialPage: Int = 0, voiceInvocationToken: Int = 0) {
 
 @Composable
 private fun HomeScreen() {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    val context = LocalContext.current
+    val controller = remember(context) { AndroidCapabilityController(context.applicationContext) }
+    var status by remember { mutableStateOf(controller.status()) }
+
+    LaunchedEffect(Unit) {
+        status = controller.status()
+    }
+
+    val readiness = listOf(
+        !status.assistantRoleAvailable || status.assistantRoleHeld,
+        status.overlayAllowed,
+        status.accessibilityEnabled,
+        status.notificationPermissionGranted,
+        status.microphonePermissionGranted
+    )
+    val readyCount = readiness.count { it }
+    val readyFraction = readyCount / readiness.size.toFloat()
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+        val wide = maxWidth >= 820.dp
+
+        if (wide) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                MagicarHeroCard(
+                    modifier = Modifier.weight(1.45f).fillMaxSize(),
+                    readyCount = readyCount,
+                    totalCount = readiness.size,
+                    readyFraction = readyFraction,
+                    fullyReady = status.maxApprovedReady
+                )
+                MagicarStatusColumn(
+                    modifier = Modifier.weight(1f).fillMaxSize(),
+                    microphoneReady = status.microphonePermissionGranted,
+                    executorReady = status.executorConnected,
+                    visionReady = status.freshScreenFrameReady
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                MagicarHeroCard(
+                    modifier = Modifier.weight(1.15f).fillMaxWidth(),
+                    readyCount = readyCount,
+                    totalCount = readiness.size,
+                    readyFraction = readyFraction,
+                    fullyReady = status.maxApprovedReady
+                )
+                MagicarStatusColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    microphoneReady = status.microphonePermissionGranted,
+                    executorReady = status.executorConnected,
+                    visionReady = status.freshScreenFrameReady
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MagicarHeroCard(
+    modifier: Modifier,
+    readyCount: Int,
+    totalCount: Int,
+    readyFraction: Float,
+    fullyReady: Boolean
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(30.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = UltronPanelStrong)
     ) {
-        Text("VELTRIX MAGICAR", style = MaterialTheme.typography.headlineMedium, color = UltronCyan)
-        Text("Idle · ready when you call it")
-        UltronCard("Veltrix Magicar Core", "Understand → Tell → Permission → Execute → Verify")
-        UltronCard("Live", "Voice + user-consented screen copilot foundation")
-        UltronCard("Universal Fabric", "Phone · Desktop · Cloud · MCP")
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color(0xFF0A2030),
+                            Color(0xFF09131E),
+                            Color(0xFF080D13)
+                        )
+                    )
+                )
+                .padding(26.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "MAGICAR // READY",
+                        color = UltronCyan,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Text(
+                        "Voice-first cockpit intelligence.",
+                        style = MaterialTheme.typography.headlineLarge
+                    )
+                    Text(
+                        "Wake → understand → act → verify → idle",
+                        color = UltronMuted,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "$readyCount / $totalCount core permissions ready",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    LinearProgressIndicator(
+                        progress = { readyFraction },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = UltronCyan,
+                        trackColor = Color.White.copy(alpha = 0.08f)
+                    )
+                    Text(
+                        if (fullyReady) {
+                            "System ready. Idle until you wake it."
+                        } else {
+                            "Finish Control setup once, then Magicar stays voice-first."
+                        },
+                        color = UltronMuted,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MagicarStatusColumn(
+    modifier: Modifier,
+    microphoneReady: Boolean,
+    executorReady: Boolean,
+    visionReady: Boolean
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        UltronCard(
+            "VOICE CORE",
+            if (microphoneReady) "Offline wake + Gemini 3.8 Live ready" else "Microphone permission required"
+        )
+        UltronCard(
+            "DEVICE CONTROL",
+            if (executorReady) "Live semantic executor connected" else "Accessibility executor not connected"
+        )
+        UltronCard(
+            "VISION",
+            if (visionReady) "Fresh one-shot frame ready" else "Semantic-first · vision only when needed"
+        )
+        UltronCard(
+            "SAFETY",
+            "Infotainment/UI only · vehicle-critical actuation blocked"
+        )
     }
 }
 
@@ -458,6 +627,7 @@ private fun CapabilityCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
         colors = CardDefaults.cardColors(containerColor = UltronPanel)
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -481,6 +651,7 @@ private fun UltronCard(title: String, detail: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
         colors = CardDefaults.cardColors(containerColor = UltronPanel)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
