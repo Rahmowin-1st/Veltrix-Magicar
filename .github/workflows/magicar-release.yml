@@ -1,0 +1,67 @@
+name: Veltrix Magicar Signed Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VELTRIX_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.VELTRIX_ANDROID_KEYSTORE_PASSWORD }}
+      VELTRIX_ANDROID_KEY_ALIAS: ${{ secrets.VELTRIX_ANDROID_KEY_ALIAS }}
+      VELTRIX_ANDROID_KEY_PASSWORD: ${{ secrets.VELTRIX_ANDROID_KEY_PASSWORD }}
+      VELTRIX_KEYSTORE_BASE64: ${{ secrets.VELTRIX_ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --channel=3 "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.0"
+      - name: Require signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VELTRIX_KEYSTORE_BASE64"
+          test -n "$VELTRIX_ANDROID_KEYSTORE_PASSWORD"
+          test -n "$VELTRIX_ANDROID_KEY_ALIAS"
+          test -n "$VELTRIX_ANDROID_KEY_PASSWORD"
+      - name: Prepare release keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/veltrix-magicar-release.jks"
+          printf '%s' "$VELTRIX_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          echo "VELTRIX_ANDROID_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+      - name: Prepare offline Hey Magicar model
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet sentencepiece
+          bash scripts/prepare_magicar_kws.sh
+      - name: Build signed release and run unit tests
+        env:
+          VELTRIX_REQUIRE_RELEASE_SIGNING: "true"
+        run: gradle --no-daemon :app:assembleRelease :app:testDebugUnitTest --stacktrace
+      - name: Upload signed release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-magicar-release-signed
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
