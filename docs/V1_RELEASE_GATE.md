@@ -1,6 +1,6 @@
 # Veltrix Magicar V1 release gate
 
-Current software line: **1.0.0-rc2**.
+Current software line: **1.0.0-rc3**.
 
 V1 must not be called fully finished until both software and physical head-unit gates pass.
 
@@ -44,4 +44,4 @@ A real head-unit run is still mandatory before V1.0.0 final:
 11. verify cloud Gemini/Groq path and backend task bridge on the real device;
 12. run a sustained ignition/session test for wake reliability, memory pressure and thermal stability.
 
-Only after these pass should `versionName` become `1.0.0` and `versionCode` become `3`.
+Only after these pass should `versionName` become `1.0.0` and `versionCode` become `4`.
