@@ -519,10 +519,10 @@ private fun ControlScreen() {
             CapabilityCard(
                 title = "Default assistant",
                 enabled = status.assistantRoleHeld,
-                available = status.assistantRoleAvailable,
-                actionLabel = "Request role",
+                available = true,
+                actionLabel = if (status.assistantRoleAvailable) "Request role" else "Open assistant settings",
                 onAction = {
-                    controller.assistantRoleRequestIntent()?.let { intent -> manualLauncher.launch(intent) }
+                    manualLauncher.launch(controller.assistantSetupIntent())
                 }
             )
         }
