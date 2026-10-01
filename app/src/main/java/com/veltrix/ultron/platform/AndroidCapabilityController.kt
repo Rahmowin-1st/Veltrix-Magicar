@@ -83,8 +83,8 @@ class AndroidCapabilityController(private val context: Context) {
      * Every returned Intent is resolved first and falls back to a safe Settings UI.
      */
     fun nextMaxApprovedSetupAction(current: Status = status()): GuidedSetupAction? {
-        if (current.assistantRoleAvailable && !current.assistantRoleHeld) {
-            assistantRoleRequestIntent()?.let { return GuidedSetupAction("Select Veltrix assistant", it) }
+        if (!current.assistantRoleHeld) {
+            return GuidedSetupAction("Select Veltrix assistant", assistantSetupIntent())
         }
         if (!current.accessibilityEnabled) {
             return GuidedSetupAction("Enable Veltrix Executor", accessibilitySettingsIntent())
@@ -110,6 +110,19 @@ class AndroidCapabilityController(private val context: Context) {
         return roles.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
             .takeIf(::isResolvable)
     }
+
+    /**
+     * Best-effort assistant setup entry point for OEM head units that hide the
+     * normal Default apps / Assistant screen. This never changes the role
+     * silently; it only opens a system-owned surface where the user can choose.
+     */
+    fun assistantSetupIntent(): Intent = firstResolvable(
+        assistantRoleRequestIntent(),
+        Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+        Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+        Intent("android.settings.ASSIST_GESTURE_SETTINGS"),
+        Intent(Settings.ACTION_SETTINGS)
+    )
 
     fun overlaySettingsIntent(): Intent = firstResolvable(
         Intent(
@@ -190,8 +203,8 @@ class AndroidCapabilityController(private val context: Context) {
         Uri.parse("package:${context.packageName}")
     )
 
-    private fun firstResolvable(vararg candidates: Intent): Intent =
-        candidates.firstOrNull(::isResolvable) ?: Intent(Settings.ACTION_SETTINGS)
+    private fun firstResolvable(vararg candidates: Intent?): Intent =
+        candidates.filterNotNull().firstOrNull(::isResolvable) ?: Intent(Settings.ACTION_SETTINGS)
 
     private fun isResolvable(intent: Intent): Boolean =
         intent.resolveActivity(context.packageManager) != null
