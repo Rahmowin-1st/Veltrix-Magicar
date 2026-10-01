@@ -1,19 +1,29 @@
 package com.veltrix.ultron.service
 
+import android.content.Intent
 import android.service.voice.VoiceInteractionService
+import com.veltrix.ultron.car.CarRuntimeService
 import com.veltrix.ultron.remote.UltronAgentRuntime
 
-/** Lightweight process kept by Android while Veltrix is the selected assistant. */
+/**
+ * System-owned assistant lifecycle.
+ *
+ * On modern Android this is the reliable startup owner for the persistent
+ * Magicar runtime; BOOT_COMPLETED is not allowed to launch a microphone
+ * foreground service on Android 15+.
+ */
 class UltronVoiceInteractionService : VoiceInteractionService() {
     override fun onReady() {
         super.onReady()
         UltronAgentRuntime.initialize(applicationContext)
-        // Car edition is deliberately pull-only: readiness never starts remote work.
-        // A user wake/command opens a bounded session; idle mode performs no UI task.
+        runCatching { CarRuntimeService.start(applicationContext) }
     }
 
     override fun onShutdown() {
         UltronAgentRuntime.stopBackgroundLoop()
+        runCatching {
+            stopService(Intent(applicationContext, CarRuntimeService::class.java))
+        }
         super.onShutdown()
     }
 }
