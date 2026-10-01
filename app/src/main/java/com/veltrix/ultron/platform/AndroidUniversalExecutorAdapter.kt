@@ -79,7 +79,13 @@ class AndroidUniversalExecutorAdapter(
             text = target,
             value = value ?: text.orEmpty()
         )
-        UniversalActionType.SCROLL -> AccessibilityAction(AccessibilityActionType.SCROLL_FORWARD)
+        UniversalActionType.SCROLL -> AccessibilityAction(
+            type = when (metadata["direction"]?.trim()?.lowercase()) {
+                "back", "backward", "up", "left" -> AccessibilityActionType.SCROLL_BACKWARD
+                else -> AccessibilityActionType.SCROLL_FORWARD
+            },
+            text = target ?: text
+        )
         UniversalActionType.TAP -> AccessibilityAction(
             type = when (metadata["gesture"]?.lowercase()) {
                 "double_tap" -> AccessibilityActionType.DOUBLE_TAP
