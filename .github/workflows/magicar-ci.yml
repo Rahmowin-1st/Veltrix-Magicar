@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: veltrix-magicar-ci-${{ github.ref }}
@@ -56,6 +56,31 @@ jobs:
           name: veltrix-magicar-release-unsigned
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Publish public Magicar APK
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$GITHUB_WORKSPACE/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$SRC"
+
+          STAGE="$RUNNER_TEMP/magicar-download"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp "$SRC" "$STAGE/Veltrix-Magicar-RC3-debug.apk"
+
+          cd "$STAGE"
+          git init
+          git checkout -b downloads
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Veltrix-Magicar-RC3-debug.apk
+          git commit -m "Publish Veltrix Magicar RC3 APK"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin downloads
 
   backend:
     runs-on: ubuntu-latest
